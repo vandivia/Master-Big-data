@@ -1,0 +1,431 @@
+---
+title: "Caso Práctico Final"
+output:
+  html_document: default
+  html_notebook: default
+  pdf_document: default
+---
+
+Tomaremos el dataset de aprobación de crédito bancario en https://archive.ics.uci.edu/ml/datasets/Credit+Approval . Los datos también se pueden cargar de la carpeta de contenido en  `crx.data`. La información del dataset está en https://archive.ics.uci.edu/ml/machine-learning-databases/credit-screening/crx.names y expone lo siguiente:
+
+      1. Title: Credit Approval
+
+      2. Sources: 
+          (confidential)
+          Submitted by quinlan@cs.su.oz.au
+      
+      3.  Past Usage:
+      
+          See Quinlan,
+          * "Simplifying decision trees", Int J Man-Machine Studies 27,
+            Dec 1987, pp. 221-234.
+          * "C4.5: Programs for Machine Learning", Morgan Kaufmann, Oct 1992
+        
+      4.  Relevant Information:
+      
+          This file concerns credit card applications.  All attribute names
+          and values have been changed to meaningless symbols to protect
+          confidentiality of the data.
+        
+          This dataset is interesting because there is a good mix of
+          attributes -- continuous, nominal with small numbers of
+          values, and nominal with larger numbers of values.  There
+          are also a few missing values.
+        
+      5.  Number of Instances: 690
+      
+      6.  Number of Attributes: 15 + class attribute
+      
+      7.  Attribute Information:
+      
+          A1:	b, a.
+          A2:	continuous.
+          A3:	continuous.
+          A4:	u, y, l, t.
+          A5:	g, p, gg.
+          A6:	c, d, cc, i, j, k, m, r, q, w, x, e, aa, ff.
+          A7:	v, h, bb, j, n, z, dd, ff, o.
+          A8:	continuous.
+          A9:	t, f.
+          A10:	t, f.
+          A11:	continuous.
+          A12:	t, f.
+          A13:	g, p, s.
+          A14:	continuous.
+          A15:	continuous.
+          A16: +,-         (class attribute)
+      
+      8.  Missing Attribute Values:
+          37 cases (5%) have one or more missing values.  The missing
+          values from particular attributes are:
+      
+          A1:  12
+          A2:  12
+          A4:   6
+          A5:   6
+          A6:   9
+          A7:   9
+          A14: 13
+      
+      9.  Class Distribution
+        
+          +: 307 (44.5%)
+          -: 383 (55.5%)
+      
+## Actividades a realizar
+
+# 1. Carga los datos. Realiza una inspección por variables de la distribución de aprobación de crédito en función de cada atributo visualmente. Realiza las observaciones pertinentes. ¿ Qué variables son mejores para separar los datos?
+
+Lo primero que observamos en la información inicial proporcionada es que los atributos no presentan cabecera, por temas de confidencialidad, por lo que resulta difícil estudiar las relaciones entre ellos de forma intuitiva.
+
+Contiene 690 casos, representados por 16 variables (A1...A16). Los primeros 15 representan los atributos, y A16 proporciona el resultado positivo o negativo del crédito.
+
+También nos indica que tenemos un 5% de valores nulos o faltantes, y la distribución de estos entre los distintos atributos.
+
+```{r}
+#Cargamos los datos en un DF
+url <- 'CASO_FINAL_crx.data'
+df <- read.csv(url,header= F)
+
+#leemos los primeros registros
+head(df)
+```
+
+Al cargar el df observamos que los atributos no toman el mismo nombre, según la información deberían estar enumeradas como A1,..., pero nos encontramos con que se numeran como V1...
+Vamos a inspeccionar los datos para comprobar si podemos pasar por alto este punto, o debemos realizar alguna transformación.
+
+Observamos como encontramos dos tipos de variables en el dataFrame:
+- Variables categóricas: Columnas V1, V4, V5, V6, V7, V9, V10, V12 y V13.
+- Variables numéricas: V2, V3, V8, V11, V14 y V15.
+- V16 es el atributo de clase, que indica (+) o (-) a la aprobación del crédito.
+
+```{r}
+#Inspeccionamos los datos
+str(df)
+```
+
+Algunas variables no se encuentran en el mismo estado que el descrito en el enunciado, por lo que vamos a realizar las transformaciones pertinentes.
+
+```{r}
+str(df$V2)
+#El atributo V2 se ha cargado como Factor y debemos transformarlo en valor numérico
+df$V2 <- as.double(as.character(df$V2))
+class(df$V2)
+head(df$V2)
+
+str(df$V14)
+#El atributo V14 se ha cargado como factor y debemos transformarlo a entero
+df$V14 <- as.integer(as.character(df$V14))
+class(df$V14)
+head(df$V14)
+```
+
+```{r}
+summary(df)
+```
+
+Un análisis visual del dataset nos puede dar una idea de las posibles relaciones entre las variables.
+
+#Variables categóricas:
+
+```{r}
+library(ggplot2)
+library(cowplot)
+
+c1 <- ggplot(data=df, aes(x=V1, fill=V16)) + geom_bar(stat="count")
+c2 <- ggplot(data=df, aes(x=V4, fill=V16)) + geom_bar(stat="count")
+c3 <- ggplot(data=df, aes(x=V5, fill=V16)) + geom_bar(stat="count")
+c4 <- ggplot(data=df, aes(x=V6, fill=V16)) + geom_bar(stat="count")
+c5 <- ggplot(data=df, aes(x=V7, fill=V16)) + geom_bar(stat="count")
+c6 <- ggplot(data=df, aes(x=V9, fill=V16)) + geom_bar(stat="count")
+c7 <- ggplot(data=df, aes(x=V10, fill=V16)) + geom_bar(stat="count")
+c8 <- ggplot(data=df, aes(x=V12, fill=V16)) + geom_bar(stat="count")
+c9 <- ggplot(data=df, aes(x=V13, fill=V16)) + geom_bar(stat="count")
+
+#Simple grid
+plot_grid(c1, c2, c3, c4, c5, c6, c7, c8, c9, ncol=2, labels = "AUTO")
+```
+Según los resultados para las variables categóricas, las que parecen tener mayor influencia para la aprobación del crédito, y para separar los datos, son las variables V9 y V10.
+
+Vamos a comprobar que efectivamente estas variables actúan como predictor.
+```{r}
+#Test independencia variables categóricas
+chisq.test(table(df$V9, df$V16))
+chisq.test(table(df$V10, df$V16))
+```
+#Variables continuas:
+
+```{r}
+co1 <- ggplot(data=df)+geom_histogram(aes(x=V2, fill=V16))
+co2 <- ggplot(data=df)+geom_histogram(aes(x=V3, fill=V16))
+co3 <- ggplot(data=df)+geom_histogram(aes(x=V8, fill=V16))
+co4 <- ggplot(data=df)+geom_histogram(aes(x=V11, fill=V16), bins=20)
+co5 <- ggplot(data=df)+geom_histogram(aes(x=V14, fill=V16))
+co6 <- ggplot(data=df)+geom_histogram(aes(x=V15, fill=V16))
+
+#Simple grid
+plot_grid(co1,co2,co3,co4,co5,co6, ncol=2, labels = "AUTO")
+```
+Se observa una asimetría hacia la izquierda de todas las variables, pero no vemos una clara dependencia.
+
+Podemos estudiar las correlaciones entre las variables, es decir, el grado de dependencia entre pares de variables para analizar que variables son mejores para separar los datos.
+
+```{r}
+library (GGally)
+
+pares_numericos <- df[,c(2,3,8,11,14,15)]
+ggpairs(pares_numericos, aes(color=df$V16))
+```
+Los resultados no arrojan una clara separación de las variables.
+
+La relación entre la aprobación del crédito (V16) y el resto de variables no es inmediata si partimos de los resultados anteriores.
+
+
+# 2. Prepara el dataset convenientemente e imputa los valores faltantes usando la librería `missForest`
+
+Imputar los datos que faltan, viene ser rellenar los NA´s con el mejor valor posible. Existen varias técnicas, pero para ello debemos caracterizar que patrón siguen nuestros datos faltantes.
+
+```{r}
+#Análisis exploratorio de NA´s
+pacman::p_load(tidyverse, VIM, lattice, missForest, mice)
+
+df %>%
+    aggr(col=mdc(1:2), numbers=T, sortVars=T,
+         cex.axis=.8, gap=3, only.miss = F, combined = F,
+         ylab=c("Proportion of missingness","Missingness Pattern"))
+```
+La presencia de valores NA se encuentra concentrada en las columnas V2 y V14, con 12 y 13 valores NA como también podemos apreciar en el Summary.
+
+```{r}
+summary(df)
+```
+
+Además de los valores NA´s, tenemos una serie de valores '?', que también debemos convertir a NA para posteriormente imputar.
+```{r}
+#Asignamos NA a los valores ?
+df$V1[which(df$V1=="?")] <- NA
+df$V4[which(df$V4=="?")] <- NA
+df$V5[which(df$V5=="?")] <- NA
+df$V7[which(df$V7=="?")] <- NA
+
+```
+
+Volvemos a representar los valores nulos de la muestra
+```{r}
+#Análisis exploratorio de NA´s
+pacman::p_load(tidyverse, VIM, lattice, missForest, mice)
+
+df %>%
+    aggr(col=mdc(1:2), numbers=T, sortVars=T,
+         cex.axis=.8, gap=3, only.miss = F, combined = F,
+         ylab=c("Proportion of missingness","Missingness Pattern"))
+```
+
+```{r}
+#Conteo de valores NA
+apply(is.na(df.imp), 2, sum)
+```
+
+Imputamos los valores faltantes utilizándo la librería missForest
+
+```{r}
+#Imputar valores NA
+df.imp<- missForest(df, maxiter = 5,ntree = 250, variablewise = TRUE)
+```
+```{r}
+#Visualizamos el error
+df.imp$OOBerror
+```
+El error de imputación proporciona dos valores. El Error cuadrático medio (MSE) para las variables continuas, y la proporción de entradas clasificadas falsamente (PFC) en la parte categórica de los datos.
+
+```{r}
+#Conteo de valores NA
+apply(is.na(df.imp$ximp), 2, sum)
+```
+Sobreescribimos los datos con los valores imputados en un nuevo df.imp
+```{r}
+df.imp<-df.imp$ximp
+```
+
+# 3. Divide el dataset tomando las primeras 590 instancias como train y las últimas 100 como test.
+
+la variable objetivo (V16) tiene valores + y -, que debemos cambiar por 0 y 1
+```{r}
+#Valores iniciales en V16
+levels(df.imp$V16)
+
+#Le asignamos nuevos valores
+levels(df.imp$V16) <- c(0,1)
+levels(df.imp$V16)
+```
+
+Creamos matrices de predictores y variable objetivo
+```{r}
+#Dividimos el dataset tomando las primeras 590 instancias como train y las ?ltimas 100 como test.
+datostrain <- df.imp[1:590,]
+datostest <- df.imp[591:690, ]
+
+predictores <- datostrain[, 1:15 ]
+predictora <- datostrain$V16
+
+predictoresTest <- datostest[, 1:15 ]
+predictoraTest <- datostest$V16
+```
+
+# 4. Entrena un modelo de regresión logística con regularización Ridge y Lasso en train seleccionando el que mejor **AIC** tenga. Da las métricas en test.
+
+## Regresión logística minimizando AIC ##
+
+Buscamos el mejor modelo
+```{r}
+#install.packages("glmnet") 
+#install.packages("MASS") 
+library(glmnet) 
+library(MASS)
+
+#Creando el modelo
+fit1 <- glm(V16~., data=datostrain, family=binomial) 
+fit0 <- glm(V16~1, data=datostrain, family=binomial) 
+
+step <-stepAIC(fit0,direction="both",scope=list(upper=fit1,lower=fit0))
+```
+```{r}
+#resumen del ajuste del modelo
+summary(step)
+```
+
+```{r}
+#coeficientes 
+round(step$coefficients,2)
+```
+
+```{r}
+#logs odds
+round(exp(step$coefficients),2)
+```
+
+La matriz de confusión y las métricas de error  se pueden calcular. Para obtener todas las que se han dado incluir la opción `mode="everything"` . 
+
+```{r}
+#install.packages(c("e1071", "caret", "e1071")
+library(caret)
+library(ggplot2)
+library(lattice)
+library(e1071)
+
+#Definimos las métricas para el test
+y_pred <- as.numeric(predict(step, subset(datostest,select = -V16 ), type="response")>.5)
+y_test <- as.numeric(datostest$V16)
+
+head(y_pred)
+
+y_pred <- factor(y_pred)
+y_test <- factor (y_test)
+levels(y_test)
+
+levels(y_test) <- c(0,1)
+levels(y_test)
+
+confusionMatrix(y_test, y_pred, mode="everything")
+```
+
+
+## Regresión logística Ridge ##
+
+Usamos la librería `glmnet`. Ajustamos un modelo de Ridge de regresión lineal, para ello en `Alpha` debemos fijar el valor `0`
+
+```{r}
+#install.packages("glmnet")
+library(glmnet)
+
+X_modeloTrain <- model.matrix(predictora~.,predictores )[,-1]
+str(X_modeloTrain)
+#summary(X_modeloTrain)
+Y_modeloTrain <- predictora
+
+X_modeloTest <- model.matrix(predictoraTest~.,predictoresTest)[,-1]
+
+#Parametro lambda ?? = 10^10 to ?? = 10^???2,
+grid =10^ seq (10,-2, length =100)
+
+#Parametro de validacion cruzada : 
+n_folds=5
+
+ridge.modelo =cv.glmnet (X_modeloTrain,Y_modeloTrain,alpha =0,family="binomial", type.measure="auc", lambda =grid, nfolds = n_folds) 
+# Resultados
+plot(ridge.modelo)
+
+#este es el mejor valor de lambda
+ridge.modelo$lambda.min
+
+#este es el valor del error que se estima para ese valor lambda mínimo
+min(ridge.modelo$cvm)
+```
+
+Métricas para el test
+```{r}
+
+y_prediccion_ridge <- as.numeric(predict.glmnet(ridge.modelo$glmnet.fit, newx=X_modeloTest, s=ridge.modelo$lambda.min)>.5)
+
+y_prediccion_ridge<-factor(y_prediccion_ridge)
+class(y_prediccion_ridge)
+
+confusionMatrix(y_test, y_prediccion_ridge, mode="everything")
+```
+
+## Regresión logística Lasso ##
+
+Para ejecutar un modelo hueco de Lasso sólo tenemos que cambiar `Alpha=0`en la función `glmnet` y aplicarla igual que en el caso Ridge
+```{r}
+#install.packages("glmnet")
+library(glmnet)
+
+lasso.modelo <- cv.glmnet(X_modeloTrain,Y_modeloTrain, family='binomial', alpha=1, parallel=TRUE, standardize=TRUE, type.measure='auc')
+# Resultados
+plot(lasso.modelo)
+#este es el mejor valor de lambda
+lasso.modelo$lambda.min
+#este es el valor del error que se estima para ese valor lambda mínimo dado en MSE
+min(lasso.modelo$cvm)
+```
+Métricas para el test
+```{r}
+
+y_prediccion_lasso <- as.numeric(predict.glmnet(lasso.modelo$glmnet.fit, newx=X_modeloTest, s=lasso.modelo$lambda.min)>.5)
+
+y_prediccion_lasso<-factor(y_prediccion_lasso)
+class(y_prediccion_lasso)
+
+confusionMatrix(y_test, y_prediccion_lasso, mode="everything")
+```
+
+#5. Aporta los log odds de las variables predictoras sobre la variable objetivo
+
+```{r}
+# Ridge
+exp(coef(ridge.modelo, s=ridge.modelo$lambda.min))
+```
+
+```{r}
+# Lasso
+exp(coef(lasso.modelo, s=lasso.modelo$lambda.min))
+```
+
+
+#6. Si por cada verdadero positivo ganamos 100e y por cada falso positivo perdemos 20e. 
+#¿ Qué rentabilidad aporta aplicar este modelo?
+
+La rentabilidad nos la da el verdadero positivo (TP), los acertados sobre la clase predicha como positivo por lo que debemos estudiar el recall para el cálculo de la rentabilidad
+
+```{r}
+#En el caso de Ridge tenemos TP=5 y FP=9
+#rentabilidad = (5*100)-(9*20)=320
+```
+
+```{r}
+#En el caso de Lasso tenemos TP=6 y FP=8
+#rentabilidad = (6*100)-(8*20)=440
+```
+
+
+
